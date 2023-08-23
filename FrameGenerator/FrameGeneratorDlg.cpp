@@ -84,6 +84,8 @@ void CFrameGeneratorDlg::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Control(pDX, IDC_EDIT_PATH, m_editPath);
 	DDX_Control(pDX, IDC_EDIT_PORT, m_editPort);
+	DDX_Control(pDX, IDC_EDIT_ID, m_editID);
+	DDX_Control(pDX, IDC_EDIT_PW, m_editPW);
 	DDX_Control(pDX, ID_BTN_STOP, m_btnStop);
 	DDX_Control(pDX, IDOK, m_btnStart);
 }
@@ -133,14 +135,7 @@ BOOL CFrameGeneratorDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-	PreSubclassWindow();
-	if (!m_PreviewWnd.SubclassDlgItem(IDC_STATIC_VIEW, this))
-		ASSERT(FALSE);
-	m_PreviewWnd.SetOSDText("");
-
-	m_editPath.SetWindowText("rtsp://admin:admin@192.168.0.99:554/test4.mp4");
-	m_editPort.SetWindowText("554");
-
+	MakeControlPos();
 	InitTensorRT();
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -173,6 +168,21 @@ void CFrameGeneratorDlg::InitTensorRT() {
 	m_pYoloPose = new YoloV8(PosePath.GetBuffer(), config);
 
 	SendLog(1, "CFrameGeneratorDlg::InitTensorRT END ");
+}
+
+void CFrameGeneratorDlg::MakeControlPos() {
+
+	SetWindowText("A.Eyes");
+
+	PreSubclassWindow();
+	if (!m_PreviewWnd.SubclassDlgItem(IDC_STATIC_VIEW, this))
+		ASSERT(FALSE);
+	m_PreviewWnd.SetOSDText("");
+	m_editPath.SetWindowText("rtsp://192.168.0.99/test1234.mp4");
+	m_editPort.SetWindowText("554");
+	m_editID.SetWindowText("admin");
+	m_editPW.SetWindowText("admin");
+	
 }
 
 void CFrameGeneratorDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -243,19 +253,36 @@ UINT CFrameGeneratorDlg::DecodingThread(LPVOID pVoid)
 
 int CFrameGeneratorDlg::DecodingProc() {
 
-	CString strURL, strPath, strPort;
+	CString strURL, strPath, strPort, strID, strPW;
 	m_editPath.GetWindowText(strPath);
 	m_editPort.GetWindowText(strPort);
-	int nPort = 0;
-	if (FALSE == strPort.IsEmpty()) {
-		nPort = atoi(strPort);
+	m_editID.GetWindowText(strID);
+	m_editPW.GetWindowText(strPW);
+
+	//< RTSP 재생 
+	strPath = strPath.MakeLower();
+	if (strPath.Find("rtsp:") != -1) {
+			
+		//< ID / PW 존재 시 
+		if (FALSE == strID.IsEmpty() && FALSE == strPW.IsEmpty()) {
+			strPath.Replace("rtsp://", "");
+			strURL.Format("rtsp://%s:%s@",strID, strPW);
+		}
+		
+		//< PORT 존재시 
+		if (FALSE == strPort.IsEmpty()) {
+			CString strContext = strPath.Mid(strPath.ReverseFind('/'));
+			strPath = strPath.Left(strPath.ReverseFind('/'));			
+			strURL = strURL + strPath + ":" + strPort + strContext;
+
+			SendLog(TRACE_INFO, strURL);
+		}
+	}
+	else {		//< File 재생 
+		strURL = strPath;
 	}
 
-	//strURL.Format("admin:admin@%s", strPath);
-
-
-	//cv::VideoCapture capture("rtsp://admin:admin@192.168.0.99:554/test4.mp4");
-	cv::VideoCapture capture("C:\\test\\test1234.mp4");
+	cv::VideoCapture capture(strURL.GetBuffer());
 
 	if (!capture.isOpened()) {
 		//Error
@@ -266,18 +293,12 @@ int CFrameGeneratorDlg::DecodingProc() {
 	double dbFps = capture.get(cv::CAP_PROP_FPS);
 	SendLog(TRACE_INFO, "[ FPS - %f ]", dbFps);
 
-	int delay = cvRound(1000 / dbFps); // 
+	int delay = cvRound(1000 / dbFps); 
 	int frameCnt = 0;
 
-
-
-
-	//cv::namedWindow("TEST");
-
 	cv::Mat frame;
-	
 
-	while (m_bStopPlay == false) {
+	while (FALSE == m_bStopPlay ) {
 		if (!capture.read(frame)) {
 			SendLog(TRACE_ERROR, "VideoCapture READ Failed");
 		}
@@ -305,6 +326,8 @@ int CFrameGeneratorDlg::DecodingProc() {
 			}
 		}
 	}
+
+	SendLog(TRACE_INFO, "DecodingProc END");
 }
 
 
@@ -366,9 +389,9 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 			delete pBuffItem;
 			pBuffItem = NULL;
 		}
-
 	}
 
+	SendLog(TRACE_INFO, "DecodingProc END");
 	return TRUE;
 }
 
@@ -387,14 +410,11 @@ void CFrameGeneratorDlg::OnBnClickedStart()
 	CWinThread* pYoloTherad = AfxBeginThread(YoloProcessingThread, (LPVOID)this, THREAD_PRIORITY_ABOVE_NORMAL, 384000, CREATE_SUSPENDED | STACK_SIZE_PARAM_IS_A_RESERVATION);
 	m_hYoloProcessingThread = pYoloTherad->m_hThread;
 	pYoloTherad->ResumeThread();
-
-	//CDialogEx::OnOK();
 }
 
 void CFrameGeneratorDlg::OnClose()
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-
 	CDialogEx::OnClose();
 }
 
@@ -402,8 +422,9 @@ void CFrameGeneratorDlg::OnClose()
 void CFrameGeneratorDlg::OnBnClickedCancel()
 {
 	m_bStopPlay = TRUE;
-
-	Sleep(500);
+	
+	m_lFrameCnt = 0;
+	Sleep(1000);
 
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	CDialogEx::OnCancel();

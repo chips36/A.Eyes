@@ -45,9 +45,7 @@ public:
 	int m_nHeight;
 
 	CImgViewStatic	m_PreviewWnd;
-
-	BOOL  CuDNNAvailable;          // NVidia 기반 DNN인 CuDNN 사용여부
-
+		
 	HANDLE m_hDecodeThread;
 	HANDLE m_hYoloProcessingThread;
 
@@ -66,6 +64,8 @@ public:
 
 	CEdit m_editPath;
 	CEdit m_editPort;
+	CEdit m_editID;
+	CEdit m_editPW;
 	CButton m_btnStart;
 	CButton m_btnStop;
 	CString m_strCurrGuid;
@@ -86,9 +86,5 @@ public:
 	static UINT YoloProcessingThread(LPVOID pVoid);
 	int DecodingProc();
 	int YoloProcessingProc();
-
-
+	void MakeControlPos();
 };
-
-
-extern CFrameGeneratorDlg* g_pDoc;
