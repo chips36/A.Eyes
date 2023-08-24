@@ -1,7 +1,7 @@
 #include <opencv2/cudaimgproc.hpp>
 #include "yolov8.h"
 
-YoloV8::YoloV8(const std::string& onnxModelPath, const YoloV8Config& config)
+YoloV8::YoloV8(const std::string& onnxModelPath, const YoloV8Config& config, HWND hParent)
         : PROBABILITY_THRESHOLD(config.probabilityThreshold)
         , NMS_THRESHOLD(config.nmsThreshold)
         , TOP_K(config.topK)
@@ -12,6 +12,9 @@ YoloV8::YoloV8(const std::string& onnxModelPath, const YoloV8Config& config)
         , CLASS_NAMES(config.classNames)
         , NUM_KPS(config.numKPS)
         , KPS_THRESHOLD(config.kpsThreshold) {
+
+    m_hDlg = hParent;
+
     // Specify options for GPU inference
     Options options;
     options.optBatchSize = 1;
@@ -488,6 +491,7 @@ std::vector<Object> YoloV8::postprocessDetect(std::vector<float> &featureVector)
     return objects;
 }
 
+
 void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsigned int scale) {
     // If segmentation information is present, start with that
     if (!objects.empty() && !objects[0].boxMask.empty()) {
@@ -552,10 +556,15 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsi
             cv::putText(image, text, cv::Point(x, y + labelSize.height), cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, txtColor, scale);
 
             if (object.label == 43) {
+
+               
+
                 SendLog(TRACE_ERROR, "knife knife knife knife");
                 cv::Scalar red(0, 0, 255);
                 cv::rectangle(image, cv::Rect(0, 0, image.size().width, image.size().height), red, scale * 20);
                 cv::rectangle(image, rect, red, scale + 1);
+
+                ::PostMessage(m_hDlg, WM_USER + 101, (WPARAM)&image, (LPARAM)100);
             }
 
 
@@ -595,9 +604,15 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsi
                   
                     //< ¸öÅë(¾î±úºÎÅÍ °ñ¹Ý) rect ÀÇ height ·Î ¾²·¯ÁüÆÇ´Ü
                     if (5 == k) {
+                        
+                        if (pos1Y == 0 || pos2Y == 0)
+                            continue;
+
                         cv::Scalar limbColor = cv::Scalar(LIMB_COLORS[k][0], LIMB_COLORS[k][1], LIMB_COLORS[k][2]);
+                        
                         if (max(pos1Y, pos2Y) - min(pos1Y, pos2Y) < image.size().height / 30 && max(pos1Y, pos2Y) - min(pos1Y, pos2Y) > 0)
-                        {
+                        {      
+                            //SendLog(TRACE_INFO, "5- %d %d", pos1Y, pos2Y);
                             //cv::line(image, { pos1X, pos1Y }, { pos2X, pos2Y }, limbColor, 2);
                             bCollapse = true;
                         }
@@ -607,10 +622,14 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsi
 
                     }
                     else if (6 == k && bCollapse == true) {
+
+                        if (pos1Y == 0 || pos2Y == 0)
+                            continue;
+
                         cv::Scalar limbColor = cv::Scalar(LIMB_COLORS[k][0], LIMB_COLORS[k][1], LIMB_COLORS[k][2]);
                         if (max(pos1Y, pos2Y) - min(pos1Y, pos2Y) < image.size().height / 30 && max(pos1Y, pos2Y) - min(pos1Y, pos2Y) > 0)
-                        {
-                          
+                        {                          
+                            //SendLog(TRACE_INFO, "6- %d %d", pos1Y, pos2Y);
                             bCollapse = true;
                             //cv::line(image, { pos1X, pos1Y }, { pos2X, pos2Y }, limbColor, 2);
                         }
@@ -633,9 +652,25 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsi
             //< ¾²·¯Áü
             if (bCollapse) {
                 SendLog(TRACE_ERROR, "Collapse Collapse Collapse Collapse");
-                cv::Scalar red(0, 0, 255);
-                cv::rectangle(image, cv::Rect(0,0, image.size().width, image.size().height), red, scale * 20);
-                cv::putText(image, "EVENT", cv::Point(30, 30 + labelSize.height), cv::FONT_HERSHEY_DUPLEX, 0.35 * scale, red, scale);
+
+                ++m_nCollapseCnt;
+
+                if (m_nCollapseCnt > 5) {
+
+                    ::PostMessage(m_hDlg, WM_USER + 101, (WPARAM)&image, (LPARAM)101);
+                  /*  uint64_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+                    std::string str = std::to_string(ms) + ".jpg";
+                    imwrite(str, image);*/
+
+                    cv::Scalar red(0, 0, 255);
+                    cv::rectangle(image, cv::Rect(0, 0, image.size().width, image.size().height), red, scale * 20);
+                    cv::putText(image, "EVENT", cv::Point(30, 30 + labelSize.height), cv::FONT_HERSHEY_DUPLEX, 0.35 * scale, red, scale);
+                }
+            } 
+            else {//< »óÈ²Á¾·á 
+                m_nNormalCnt++;
+                if (m_nNormalCnt > 5)
+                    m_nCollapseCnt = 0;
             }
         } // if 
     }

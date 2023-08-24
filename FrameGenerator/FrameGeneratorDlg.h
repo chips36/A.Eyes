@@ -55,6 +55,7 @@ public:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+	afx_msg LRESULT OnEventCreate(WPARAM wParam, LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
 public:
 	
@@ -66,12 +67,14 @@ public:
 	CEdit m_editPort;
 	CEdit m_editID;
 	CEdit m_editPW;
+	CListCtrl m_evtList;
+	CImageList m_imgList;
 	CButton m_btnStart;
 	CButton m_btnStop;
 	CString m_strCurrGuid;
 
-	YoloV8* m_pYoloV8;
-	YoloV8* m_pYoloPose;
+	YoloV8* m_pYoloV8;	//< Object Detect
+	YoloV8* m_pYoloPose; //< Pose
 
 	BOOL m_bStopPlay;
 

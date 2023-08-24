@@ -81,9 +81,6 @@ CRect gfxGetFittingRect(CRect rect, CSize s_size)
 
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-// CImgViewStatic
-
 IMPLEMENT_DYNAMIC(CImgViewStatic, CStatic)
 
 CImgViewStatic::CImgViewStatic() : CStatic()
@@ -108,8 +105,6 @@ void CImgViewStatic::ClearStatic()
 	m_strOSDText = "";
 	RedrawWindow();
 }
-
-
 
 
 void CImgViewStatic::DisplayImage(cv::Mat s_image, BOOL bDrawNow)

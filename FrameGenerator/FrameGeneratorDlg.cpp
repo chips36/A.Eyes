@@ -53,6 +53,31 @@ BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
+void Mat2CImage(cv::Mat* mat, CImage& img) {
+	if (!mat || mat->empty());
+	//MessageBox("Error convert Mat to CImage", "error", MB_OK);
+	int nBPP = mat->channels() * 8;
+	img.Create(mat->cols, mat->rows, nBPP);
+	if (nBPP == 8)
+	{
+		static RGBQUAD pRGB[256];
+		for (int i = 0; i < 256; i++)
+			pRGB[i].rgbBlue = pRGB[i].rgbGreen = pRGB[i].rgbRed = i;
+		img.SetColorTable(0, 256, pRGB);
+	}
+	uchar* psrc = mat->data;
+	uchar* pdst = (uchar*)img.GetBits();
+	int imgPitch = img.GetPitch();
+	for (int y = 0; y < mat->rows; y++)
+	{
+		memcpy(pdst, psrc, mat->cols * mat->channels());//mat->step is incorrect for those images created by roi (sub-images!)
+		psrc += mat->step;
+		pdst += imgPitch;
+	}
+
+	return;
+}
+
 // CFrameGeneratorDlg 대화 상자
 
 CFrameGeneratorDlg::CFrameGeneratorDlg(CWnd* pParent /*=nullptr*/)
@@ -87,6 +112,7 @@ void CFrameGeneratorDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_ID, m_editID);
 	DDX_Control(pDX, IDC_EDIT_PW, m_editPW);
 	DDX_Control(pDX, ID_BTN_STOP, m_btnStop);
+	DDX_Control(pDX, IDC_LIST_EVENT, m_evtList);
 	DDX_Control(pDX, IDOK, m_btnStart);
 }
 
@@ -100,6 +126,7 @@ BEGIN_MESSAGE_MAP(CFrameGeneratorDlg, CDialogEx)
 	ON_WM_CLOSE()
 	ON_BN_CLICKED(IDCANCEL, &CFrameGeneratorDlg::OnBnClickedCancel)
 	ON_BN_CLICKED(ID_BTN_STOP, &CFrameGeneratorDlg::OnBnClickedBtnStop)
+	ON_MESSAGE(WM_USER + 101, &CFrameGeneratorDlg::OnEventCreate)
 END_MESSAGE_MAP()
 
 
@@ -164,11 +191,12 @@ void CFrameGeneratorDlg::InitTensorRT() {
 	SendLog(1, YoloPath);
 	SendLog(1, PosePath);
 
-	m_pYoloV8 = new YoloV8(YoloPath.GetBuffer(), config);
-	m_pYoloPose = new YoloV8(PosePath.GetBuffer(), config);
+	m_pYoloV8 = new YoloV8(YoloPath.GetBuffer(), config, this->GetSafeHwnd());
+	m_pYoloPose = new YoloV8(PosePath.GetBuffer(), config, this->GetSafeHwnd());
 
 	SendLog(1, "CFrameGeneratorDlg::InitTensorRT END ");
 }
+
 
 void CFrameGeneratorDlg::MakeControlPos() {
 
@@ -178,11 +206,17 @@ void CFrameGeneratorDlg::MakeControlPos() {
 	if (!m_PreviewWnd.SubclassDlgItem(IDC_STATIC_VIEW, this))
 		ASSERT(FALSE);
 	m_PreviewWnd.SetOSDText("");
-	m_editPath.SetWindowText("rtsp://192.168.0.99/test1234.mp4");
+	m_editPath.SetWindowText("rtsp://desktop-uv7j38l.iptime.org/test1234.mp4");
 	m_editPort.SetWindowText("554");
 	m_editID.SetWindowText("admin");
 	m_editPW.SetWindowText("admin");
+
 	
+	m_evtList.SetExtendedStyle(m_evtList.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES );
+	m_imgList.Create(128, 128, ILC_COLOR24, 1, 1);
+	m_evtList.SetImageList(&m_imgList, LVSIL_NORMAL);
+
+	ChangeWindowSize(800, 600);
 }
 
 void CFrameGeneratorDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -235,13 +269,39 @@ HCURSOR CFrameGeneratorDlg::OnQueryDragIcon()
 }
 
 
+LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
+
+	SendLog(TRACE_INFO, "EVENT CREATE");
+	cv::Mat* pImg = (cv::Mat*)wParam;
+	int evtType = (int)lParam;
+	
+
+	cv::Mat resizeImg;
+	resize(*pImg, resizeImg, cv::Size(128, 128));
+	
+	CImage image;
+	Mat2CImage(&resizeImg, image);
+	CBitmap bitmap;
+	bitmap.Attach(image.Detach());
+		
+	int nImgIndex = m_imgList.Add(&bitmap, RGB(0, 0, 0));
+
+	//m_evtList.SetImageList(&m_imgList, LVSIL_NORMAL);
+	//m_evtList.SetIconSpacing(64, 92); /* Icon 들간 간격 */
+	
+	m_evtList.InsertItem(0, "test", nImgIndex);
+	return 0L;
+}
+
+
+
 
 
 UINT CFrameGeneratorDlg::DecodingThread(LPVOID pVoid)
 {
 	COINITIALIZEEX_MULTI_THREADED
 
-		CFrameGeneratorDlg* pDlg = (CFrameGeneratorDlg*)pVoid;
+	CFrameGeneratorDlg* pDlg = (CFrameGeneratorDlg*)pVoid;
 
 	pDlg->DecodingProc();
 
@@ -254,6 +314,7 @@ UINT CFrameGeneratorDlg::DecodingThread(LPVOID pVoid)
 int CFrameGeneratorDlg::DecodingProc() {
 
 	CString strURL, strPath, strPort, strID, strPW;
+	BOOL bRTSP = FALSE;
 	m_editPath.GetWindowText(strPath);
 	m_editPort.GetWindowText(strPort);
 	m_editID.GetWindowText(strID);
@@ -262,21 +323,23 @@ int CFrameGeneratorDlg::DecodingProc() {
 	//< RTSP 재생 
 	strPath = strPath.MakeLower();
 	if (strPath.Find("rtsp:") != -1) {
-			
+
 		//< ID / PW 존재 시 
 		if (FALSE == strID.IsEmpty() && FALSE == strPW.IsEmpty()) {
 			strPath.Replace("rtsp://", "");
-			strURL.Format("rtsp://%s:%s@",strID, strPW);
+			strURL.Format("rtsp://%s:%s@", strID, strPW);
 		}
-		
+
 		//< PORT 존재시 
 		if (FALSE == strPort.IsEmpty()) {
 			CString strContext = strPath.Mid(strPath.ReverseFind('/'));
-			strPath = strPath.Left(strPath.ReverseFind('/'));			
+			strPath = strPath.Left(strPath.ReverseFind('/'));
 			strURL = strURL + strPath + ":" + strPort + strContext;
 
 			SendLog(TRACE_INFO, strURL);
 		}
+
+		bRTSP = TRUE;
 	}
 	else {		//< File 재생 
 		strURL = strPath;
@@ -293,20 +356,22 @@ int CFrameGeneratorDlg::DecodingProc() {
 	double dbFps = capture.get(cv::CAP_PROP_FPS);
 	SendLog(TRACE_INFO, "[ FPS - %f ]", dbFps);
 
-	int delay = cvRound(1000 / dbFps); 
-	int frameCnt = 0;
+	int delay = cvRound(1000 / dbFps);
+	//int frameCnt = 0;
 
 	cv::Mat frame;
 
-	while (FALSE == m_bStopPlay ) {
+	while (FALSE == m_bStopPlay) {
 		if (!capture.read(frame)) {
 			SendLog(TRACE_ERROR, "VideoCapture READ Failed");
 		}
-		else {
+		else {						
 
-			frameCnt = capture.get(cv::CAP_PROP_POS_FRAMES);
-			if (cv::waitKey(delay) >= 0)break;
-
+			if (FALSE == bRTSP) {
+				//frameCnt = capture.get(cv::CAP_PROP_POS_FRAMES);
+				if (cv::waitKey(delay) >= 0)break;
+			}
+		
 			//cv::imshow("TEST", frame);
 			//cv::waitKey(30);
 			if (frame.size().width != m_nWidth || frame.size().height != m_nHeight) {
@@ -349,7 +414,6 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 	{
 		CImageItem* pBuffItem = m_pCompBuffQueue->Pop();
 
-
 		if (pBuffItem)
 		{
 			//////////////////////////////////// OBJECT DETECTION //////////////////////////////////////////////////
@@ -366,8 +430,7 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 			if (objects.size() > 0) {
 				m_pYoloV8->drawObjectLabels(img, objects);
 			}
-
-
+		
 			/* 1 - 왼쪽 허벅지 2- 왼다리 3 - 오른쪽 허벅지 4- 오른쪽 다리
 			*  5 - 왼쪽몸통 6-오른쪽 몸통(어깨에서 골반)
 			*  8 - 왼쪽 팔뚝   9 -오른쪽 팔뚝  10- 왼쪽 팔  11 - 오른쪽 팔
@@ -422,7 +485,7 @@ void CFrameGeneratorDlg::OnClose()
 void CFrameGeneratorDlg::OnBnClickedCancel()
 {
 	m_bStopPlay = TRUE;
-	
+
 	m_lFrameCnt = 0;
 	Sleep(1000);
 
@@ -448,12 +511,16 @@ void CFrameGeneratorDlg::ChangeWindowSize(int nWidth, int nHeight) {
 #define BTN_BUTTON_SIZE 100
 #define BTN_BUTTON_MARGIN 10
 #define BTN_HEIGHT 25
+#define LIST_HEIGHT 175
 
 	CRect rect;
 	GetWindowRect(&rect);
 
-	this->MoveWindow(rect.left, rect.top, nWidth + 20, nHeight + 130);
+	this->MoveWindow(rect.left, rect.top, nWidth + 20, nHeight + 130 + LIST_HEIGHT);
 	this->m_PreviewWnd.MoveWindow(2, 50, nWidth, nHeight);
-	this->m_btnStart.MoveWindow(nWidth - BTN_BUTTON_SIZE * 2 - BTN_BUTTON_MARGIN, 50 + nHeight + BTN_BUTTON_MARGIN, BTN_BUTTON_SIZE, BTN_HEIGHT);
-	this->m_btnStop.MoveWindow(nWidth - BTN_BUTTON_SIZE, 50 + nHeight + BTN_BUTTON_MARGIN, BTN_BUTTON_SIZE, BTN_HEIGHT);
+
+	this->m_evtList.MoveWindow(2, nHeight + 50, nWidth, LIST_HEIGHT);
+	this->m_btnStart.MoveWindow(nWidth - BTN_BUTTON_SIZE * 2 - BTN_BUTTON_MARGIN, LIST_HEIGHT + 50 + nHeight  + BTN_BUTTON_MARGIN, BTN_BUTTON_SIZE, BTN_HEIGHT);
+	this->m_btnStop.MoveWindow(nWidth - BTN_BUTTON_SIZE, LIST_HEIGHT + 50 + nHeight + BTN_BUTTON_MARGIN, BTN_BUTTON_SIZE, BTN_HEIGHT);
 }
+

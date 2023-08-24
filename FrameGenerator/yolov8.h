@@ -2,6 +2,8 @@
 #include "engine.h"
 #include <fstream>
 
+using namespace std::chrono;
+
 // Utility method for checking if a file exists on disk
 inline bool doesFileExist (const std::string& name) {
     std::ifstream f(name.c_str());
@@ -19,11 +21,6 @@ struct Object {
     cv::Mat boxMask;
     // Pose estimation key points
     std::vector<float> kps{};
-
-    cv::Rect_<float> LBody;
-    cv::Rect_<float> RBody;
-    cv::Rect_<float> LLeg;
-    cv::Rect_<float> RLeg;
 };
 
 // Config the behavior of the YoloV8 detector.
@@ -34,7 +31,7 @@ struct YoloV8Config {
     // Calibration data directory. Must be specified when using INT8 precision.
     std::string calibrationDataDirectory;
     // Probability threshold used to filter detected objects
-    float probabilityThreshold = 0.65f;
+    float probabilityThreshold = 0.55f;
     // Non-maximum suppression threshold
     float nmsThreshold = 0.45f;
     // Max number of detected objects to return
@@ -77,7 +74,7 @@ struct YoloV8Config {
 class YoloV8 {
 public:
     // Builds the onnx model into a TensorRT engine, and loads the engine into memory
-    YoloV8(const std::string& onnxModelPath, const YoloV8Config& config);
+    YoloV8(const std::string& onnxModelPath, const YoloV8Config& config, HWND hParent = NULL);
 
     // Detect the objects in the image
     std::vector<Object> detectObjects(const cv::Mat& inputImageBGR);
@@ -98,8 +95,6 @@ private:
     // Postprocess the output for segmentation model
     std::vector<Object> postProcessSegmentation(std::vector<std::vector<float>>& featureVectors);
 
-
-
     std::unique_ptr<Engine> m_trtEngine = nullptr;
 
     // Used for image preprocessing
@@ -108,9 +103,13 @@ private:
     const std::array<float, 3> DIV_VALS {1.f, 1.f, 1.f};
     const bool NORMALIZE = true;
 
+    HWND m_hDlg = NULL;
+
     float m_ratio = 1;
     float m_imgWidth = 0;
     float m_imgHeight = 0;
+    int m_nCollapseCnt = 0;
+    int m_nNormalCnt = 0;
 
     // Filter thresholds
     const float PROBABILITY_THRESHOLD;
