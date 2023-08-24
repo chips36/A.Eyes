@@ -48,7 +48,7 @@ public:
 		
 	HANDLE m_hDecodeThread;
 	HANDLE m_hYoloProcessingThread;
-
+	CCriticalSection m_csEvtImg;
 
 	// 생성된 메시지 맵 함수
 	virtual BOOL OnInitDialog();
@@ -79,6 +79,8 @@ public:
 	BOOL m_bStopPlay;
 
 	CImageQueue* m_pCompBuffQueue;
+
+	cv::Mat m_evtImage;
 
 
 	afx_msg void OnBnClickedCancel();

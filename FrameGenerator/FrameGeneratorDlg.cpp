@@ -272,13 +272,23 @@ HCURSOR CFrameGeneratorDlg::OnQueryDragIcon()
 LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
 
 	SendLog(TRACE_INFO, "EVENT CREATE");
-	cv::Mat* pImg = (cv::Mat*)wParam;
+	
+	m_csEvtImg.Lock();
+
+	cv::Mat copyImg;
+	((cv::Mat*)wParam)->copyTo(copyImg);
 	int evtType = (int)lParam;
 	
+	m_csEvtImg.Unlock();
 
+	if (copyImg.size().width == 0 || copyImg.size().height == 0) {
+		SendLog(TRACE_ERROR, "EVENT IMAGE ERROR");
+		return 0L;
+	}
 	cv::Mat resizeImg;
-	resize(*pImg, resizeImg, cv::Size(128, 128));
-	
+	resize(copyImg, resizeImg, cv::Size(128, 128));
+		
+
 	CImage image;
 	Mat2CImage(&resizeImg, image);
 	CBitmap bitmap;
@@ -290,6 +300,7 @@ LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
 	//m_evtList.SetIconSpacing(64, 92); /* Icon 들간 간격 */
 	
 	m_evtList.InsertItem(0, "test", nImgIndex);
+
 	return 0L;
 }
 
@@ -382,7 +393,8 @@ int CFrameGeneratorDlg::DecodingProc() {
 
 			m_lFrameCnt++;
 
-			if (m_lFrameCnt % 2 == 0) {
+			//if (m_lFrameCnt % 2 == 0)
+			{
 				SendLog(1, " [ OnVideoFrameReceived ] queue size = %d", m_pCompBuffQueue->size());
 				CImageItem* pNewItem = new CImageItem;
 
@@ -413,6 +425,14 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 	while (m_bStopPlay == false)
 	{
 		CImageItem* pBuffItem = m_pCompBuffQueue->Pop();
+
+		if (m_lFrameCnt % 3 != 0) {
+			/*pDlg->m_nWidth = nWidth;
+			pDlg->m_nHeight = nHeight;
+			pDlg->m_pImg = (BArray1D*)pYUY2Buff;
+			pDlg->DrawIPCameraImage();*/
+			continue;
+		}
 
 		if (pBuffItem)
 		{
