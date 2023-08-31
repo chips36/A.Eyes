@@ -51,6 +51,10 @@ typedef unsigned long ulong;
    } \
 
 
+#ifndef	SAFE_DELETE
+#define	SAFE_DELETE(x) if(x) { delete x; x = NULL; }
+#endif
+
 
 #include <locale.h>
 #define TRACE_NORMAL			0x00001

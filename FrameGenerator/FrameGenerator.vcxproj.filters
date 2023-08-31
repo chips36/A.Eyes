@@ -36,7 +36,7 @@
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="ImgViewStatic.h">
+    <ClInclude Include="ImageViewCtrl.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="..\_LIB\TensorRT\samples\common\common.h">
@@ -116,7 +116,7 @@
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="ImgViewStatic.cpp">
+    <ClCompile Include="ImageViewCtrl.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\_LIB\TensorRT\samples\common\getOptions.cpp">

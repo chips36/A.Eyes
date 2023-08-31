@@ -10,15 +10,16 @@
 #include "FrameGenerator.h"
 #include "FrameGeneratorDlg.h"
 #include "afxdialogex.h"
-//
-
-#include "yolov8.h"
 
 using namespace std;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+
+#define _DEF_EVENT_IGNORE_TIME  5000
+
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -91,7 +92,11 @@ CFrameGeneratorDlg::CFrameGeneratorDlg(CWnd* pParent /*=nullptr*/)
 	m_lFrameCnt = 0L;
 	m_nWidth = 0;
 	m_nHeight = 0;
+	m_nLastEvtType = EVENT_NONE;
+	m_tpLastEvtTime = steady_clock::now();
 	m_bStopPlay = FALSE;
+	m_pYoloV8 = NULL;
+	m_pYoloPose = NULL;
 
 }
 
@@ -127,6 +132,7 @@ BEGIN_MESSAGE_MAP(CFrameGeneratorDlg, CDialogEx)
 	ON_BN_CLICKED(IDCANCEL, &CFrameGeneratorDlg::OnBnClickedCancel)
 	ON_BN_CLICKED(ID_BTN_STOP, &CFrameGeneratorDlg::OnBnClickedBtnStop)
 	ON_MESSAGE(WM_USER + 101, &CFrameGeneratorDlg::OnEventCreate)
+	ON_NOTIFY(NM_DBLCLK, IDC_LIST_EVENT, &CFrameGeneratorDlg::OnNMDblclkListEvent)
 END_MESSAGE_MAP()
 
 
@@ -162,10 +168,25 @@ BOOL CFrameGeneratorDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	
 	MakeControlPos();
+	InitImageSavePath();
 	InitTensorRT();
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
+}
+void CFrameGeneratorDlg::InitImageSavePath()
+{
+	TCHAR path[256] = { 0, };
+	GetModuleFileName(NULL, path, 256);
+
+	CString folderPath(path);
+	folderPath = folderPath.Left(folderPath.ReverseFind('\\'));
+	m_ImgSavePath = folderPath + "\\save\\";
+
+	if (GetFileAttributes(m_ImgSavePath) == -1) {
+		CreateDirectory(m_ImgSavePath,NULL);
+	}
 }
 
 void CFrameGeneratorDlg::InitTensorRT() {
@@ -277,9 +298,31 @@ LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
 
 	cv::Mat copyImg;
 	((cv::Mat*)wParam)->copyTo(copyImg);
-	int evtType = (int)lParam;
-	
+	EVENT_TYPE evtType = (EVENT_TYPE)lParam;
 	m_csEvtImg.Unlock();
+	
+
+	steady_clock::time_point  tpNow = steady_clock::now();
+	milliseconds interval = duration_cast<milliseconds>(tpNow - m_tpLastEvtTime);
+
+	//SendLog(1, "%d", interval);
+
+	//< 동일한 type의 event가 중복 발생하는 경우 일정 시간 동안 ignore
+	if (interval.count() < _DEF_EVENT_IGNORE_TIME && evtType == m_nLastEvtType) {
+		SendLog(TRACE_INFO, "IGNORE SAME EVENT.");
+		return 0L;
+	}
+
+	CString strEvtType = "";
+	
+	switch (evtType) {
+	case EVENT_KNIFE:		strEvtType = "칼부림";		break;
+	case EVENT_COLLAPSE:	strEvtType = "쓰러짐";		break;
+	}
+		
+	
+			/*	std::string str = std::to_string(ms) + ".jpg";
+				  imwrite(str, image);*/
 
 	if (copyImg.size().width == 0 || copyImg.size().height == 0) {
 		SendLog(TRACE_ERROR, "EVENT IMAGE ERROR");
@@ -295,11 +338,23 @@ LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
 	bitmap.Attach(image.Detach());
 		
 	int nImgIndex = m_imgList.Add(&bitmap, RGB(0, 0, 0));
+		
+	//< JPG 파일 저장 
+	CString strFileName, strSaveFile;
+	CTime   CurTime;
+	CurTime = CTime::GetCurrentTime();
+	strFileName.Format("%s_%04d%02d%02d%02d%02d%02d", strEvtType, CurTime.GetYear(), CurTime.GetMonth(), CurTime.GetDay()
+		, CurTime.GetHour(), CurTime.GetMinute(), CurTime.GetSecond());
 
-	//m_evtList.SetImageList(&m_imgList, LVSIL_NORMAL);
-	//m_evtList.SetIconSpacing(64, 92); /* Icon 들간 간격 */
-	
-	m_evtList.InsertItem(0, "test", nImgIndex);
+	strSaveFile = m_ImgSavePath + strFileName + ".jpg";
+	cv::imwrite(strSaveFile.GetBuffer(), copyImg);
+	SendLog(1, strSaveFile);
+
+	//< Event List Insert 
+	m_evtList.InsertItem(0, strFileName, nImgIndex);
+
+	m_tpLastEvtTime = tpNow;
+	m_nLastEvtType = evtType;
 
 	return 0L;
 }
@@ -313,7 +368,6 @@ UINT CFrameGeneratorDlg::DecodingThread(LPVOID pVoid)
 	COINITIALIZEEX_MULTI_THREADED
 
 	CFrameGeneratorDlg* pDlg = (CFrameGeneratorDlg*)pVoid;
-
 	pDlg->DecodingProc();
 
 	COUNINITIALIZEEX_MULTI_THREADED;
@@ -368,7 +422,7 @@ int CFrameGeneratorDlg::DecodingProc() {
 	SendLog(TRACE_INFO, "[ FPS - %f ]", dbFps);
 
 	int delay = cvRound(1000 / dbFps);
-	//int frameCnt = 0;
+	//int totalFrameCnt = 0;
 
 	cv::Mat frame;
 
@@ -379,7 +433,7 @@ int CFrameGeneratorDlg::DecodingProc() {
 		else {						
 
 			if (FALSE == bRTSP) {
-				//frameCnt = capture.get(cv::CAP_PROP_POS_FRAMES);
+				//totalFrameCnt = capture.get(cv::CAP_PROP_POS_FRAMES);
 				if (cv::waitKey(delay) >= 0)break;
 			}
 		
@@ -393,7 +447,7 @@ int CFrameGeneratorDlg::DecodingProc() {
 
 			m_lFrameCnt++;
 
-			//if (m_lFrameCnt % 2 == 0)
+			if (m_lFrameCnt % 2 == 1) //< 1/2 fps
 			{
 				SendLog(1, " [ OnVideoFrameReceived ] queue size = %d", m_pCompBuffQueue->size());
 				CImageItem* pNewItem = new CImageItem;
@@ -426,20 +480,19 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 	{
 		CImageItem* pBuffItem = m_pCompBuffQueue->Pop();
 
-		if (m_lFrameCnt % 3 != 0) {
-			/*pDlg->m_nWidth = nWidth;
-			pDlg->m_nHeight = nHeight;
-			pDlg->m_pImg = (BArray1D*)pYUY2Buff;
-			pDlg->DrawIPCameraImage();*/
+		/*if (m_lFrameCnt % 2 != 0) {
+			
+			SAFE_DELETE(pBuffItem);
 			continue;
-		}
+		}*/
 
 		if (pBuffItem)
 		{
 			//////////////////////////////////// OBJECT DETECTION //////////////////////////////////////////////////
 
-			cv::Mat img = pBuffItem->m_cvMatImage;
 
+			cv::Mat img;
+			img = pBuffItem->m_cvMatImage.clone();
 			//SendLog(1, "Object Detection Start ");
 
 			auto objects = m_pYoloV8->detectObjects(img);
@@ -469,8 +522,7 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 			m_nHeight = img.size().height;
 			m_PreviewWnd.DisplayImage(img, true);
 
-			delete pBuffItem;
-			pBuffItem = NULL;
+			SAFE_DELETE(pBuffItem);
 		}
 	}
 
@@ -531,7 +583,7 @@ void CFrameGeneratorDlg::ChangeWindowSize(int nWidth, int nHeight) {
 #define BTN_BUTTON_SIZE 100
 #define BTN_BUTTON_MARGIN 10
 #define BTN_HEIGHT 25
-#define LIST_HEIGHT 175
+#define LIST_HEIGHT 165
 
 	CRect rect;
 	GetWindowRect(&rect);
@@ -544,3 +596,21 @@ void CFrameGeneratorDlg::ChangeWindowSize(int nWidth, int nHeight) {
 	this->m_btnStop.MoveWindow(nWidth - BTN_BUTTON_SIZE, LIST_HEIGHT + 50 + nHeight + BTN_BUTTON_MARGIN, BTN_BUTTON_SIZE, BTN_HEIGHT);
 }
 
+
+
+void CFrameGeneratorDlg::OnNMDblclkListEvent(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+
+	NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
+
+	CString strFileName = m_evtList.GetItemText(pNMListView->iItem, 0);
+
+	if (strFileName.GetLength() != 0)
+		ShellExecute(NULL, _T("open"), _T("explorer"), m_ImgSavePath + strFileName + ".jpg", NULL, SW_SHOW);
+
+	SendLog(TRACE_INFO, strFileName);
+
+	*pResult = 0;
+}

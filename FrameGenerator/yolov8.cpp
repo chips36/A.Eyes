@@ -493,6 +493,9 @@ std::vector<Object> YoloV8::postprocessDetect(std::vector<float> &featureVector)
 
 
 void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsigned int scale) {
+
+    cv::Mat origin = image.clone();
+
     // If segmentation information is present, start with that
     if (!objects.empty() && !objects[0].boxMask.empty()) {
         cv::Mat mask = image.clone();
@@ -557,14 +560,13 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsi
 
             if (object.label == 43) {
 
-                ::SendMessage(m_hDlg, WM_USER + 101, (WPARAM)&image, (LPARAM)100);
-
                 SendLog(TRACE_ERROR, "knife knife knife knife");
                 cv::Scalar red(0, 0, 255);
                 cv::rectangle(image, cv::Rect(0, 0, image.size().width, image.size().height), red, scale * 20);
                 cv::rectangle(image, rect, red, scale + 1);
+                cv::rectangle(origin, rect, red, scale + 1);
 
-               
+                ::SendMessage(m_hDlg, WM_USER + 101, (WPARAM)&origin, (LPARAM)EVENT_KNIFE);
             }
 
 
@@ -657,11 +659,8 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object> &objects, unsi
 
                 if (m_nCollapseCnt > 5) {
 
-                    ::SendMessage(m_hDlg, WM_USER + 101, (WPARAM)&image, (LPARAM)101);
-                  /*  uint64_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-                    std::string str = std::to_string(ms) + ".jpg";
-                    imwrite(str, image);*/
-
+                    ::SendMessage(m_hDlg, WM_USER + 101, (WPARAM)&origin, (LPARAM)EVENT_COLLAPSE);
+                
                     cv::Scalar red(0, 0, 255);
                     cv::rectangle(image, cv::Rect(0, 0, image.size().width, image.size().height), red, scale * 20);
                     cv::putText(image, "EVENT", cv::Point(30, 30 + labelSize.height), cv::FONT_HERSHEY_DUPLEX, 0.35 * scale, red, scale);

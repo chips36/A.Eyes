@@ -23,6 +23,14 @@ struct Object {
     std::vector<float> kps{};
 };
 
+
+enum EVENT_TYPE {
+    EVENT_NONE = 0,
+    EVENT_KNIFE = 100,
+    EVENT_COLLAPSE = 101,
+};
+
+
 // Config the behavior of the YoloV8 detector.
 // Can pass these arguments as command line parameters.
 struct YoloV8Config {

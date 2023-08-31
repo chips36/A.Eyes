@@ -85,6 +85,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <TargetName>AEyes</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -217,7 +218,7 @@
     <ClInclude Include="FrameGenerator.h" />
     <ClInclude Include="FrameGeneratorDlg.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="ImgViewStatic.h" />
+    <ClInclude Include="ImageViewCtrl.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
@@ -235,7 +236,7 @@
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="FrameGenerator.cpp" />
     <ClCompile Include="FrameGeneratorDlg.cpp" />
-    <ClCompile Include="ImgViewStatic.cpp" />
+    <ClCompile Include="ImageViewCtrl.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
