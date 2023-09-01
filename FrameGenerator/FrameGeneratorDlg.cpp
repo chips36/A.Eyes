@@ -526,7 +526,7 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 		}
 	}
 
-	SendLog(TRACE_INFO, "DecodingProc END");
+	SendLog(TRACE_INFO, "YoloProcessingProc END");
 	return TRUE;
 }
 
