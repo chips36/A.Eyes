@@ -318,12 +318,9 @@ LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
 	switch (evtType) {
 	case EVENT_KNIFE:		strEvtType = "칼부림";		break;
 	case EVENT_COLLAPSE:	strEvtType = "쓰러짐";		break;
+	case EVENT_VIOLENCE:    strEvtType = "폭력";			break;
 	}
 		
-	
-			/*	std::string str = std::to_string(ms) + ".jpg";
-				  imwrite(str, image);*/
-
 	if (copyImg.size().width == 0 || copyImg.size().height == 0) {
 		SendLog(TRACE_ERROR, "EVENT IMAGE ERROR");
 		return 0L;
@@ -466,7 +463,7 @@ UINT CFrameGeneratorDlg::YoloProcessingThread(LPVOID pVoid)
 {
 	COINITIALIZEEX_MULTI_THREADED
 
-		CFrameGeneratorDlg* pDlg = (CFrameGeneratorDlg*)pVoid;
+	CFrameGeneratorDlg* pDlg = (CFrameGeneratorDlg*)pVoid;
 
 	pDlg->YoloProcessingProc();
 
@@ -536,12 +533,13 @@ void CFrameGeneratorDlg::OnBnClickedStart()
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	m_bStopPlay = FALSE;
 
-	//< Frame push Queue
+	//< Frame push to Queue Thread
 	CWinThread* pTherad = AfxBeginThread(DecodingThread, (LPVOID)this, THREAD_PRIORITY_ABOVE_NORMAL, 384000, CREATE_SUSPENDED | STACK_SIZE_PARAM_IS_A_RESERVATION);
 	m_hDecodeThread = pTherad->m_hThread;
 	pTherad->ResumeThread();
 
 
+	//< Yolo 분석 Thread
 	CWinThread* pYoloTherad = AfxBeginThread(YoloProcessingThread, (LPVOID)this, THREAD_PRIORITY_ABOVE_NORMAL, 384000, CREATE_SUSPENDED | STACK_SIZE_PARAM_IS_A_RESERVATION);
 	m_hYoloProcessingThread = pYoloTherad->m_hThread;
 	pYoloTherad->ResumeThread();

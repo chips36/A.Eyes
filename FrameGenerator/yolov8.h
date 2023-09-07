@@ -28,6 +28,7 @@ enum EVENT_TYPE {
     EVENT_NONE = 0,
     EVENT_KNIFE = 100,
     EVENT_COLLAPSE = 101,
+    EVENT_VIOLENCE = 102,
 };
 
 
