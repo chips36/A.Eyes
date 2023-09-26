@@ -206,7 +206,7 @@ void CFrameGeneratorDlg::InitTensorRT() {
 
 	YoloPath = folderPath + "yolov8x.onnx";
 	//YoloPath = folderPath + "yolov8x-seg.onnx";
-	//YoloPath = folderPath + "yolov8n-wheelchair.onnx";
+	//YoloPath = folderPath + "wheelchair_best.onnx";
 	PosePath = folderPath + "yolov8x-pose.onnx";
 
 	SendLog(1, YoloPath);
@@ -316,9 +316,10 @@ LRESULT CFrameGeneratorDlg::OnEventCreate(WPARAM wParam, LPARAM lParam) {
 	CString strEvtType = "";
 	
 	switch (evtType) {
-	case EVENT_KNIFE:		strEvtType = "칼부림";		break;
-	case EVENT_COLLAPSE:	strEvtType = "쓰러짐";		break;
-	case EVENT_VIOLENCE:    strEvtType = "폭력";			break;
+	case EVENT_KNIFE:			  strEvtType = "칼부림";					break;
+	case EVENT_COLLAPSE:		  strEvtType = "쓰러짐";				    break;
+	case EVENT_VIOLENCE_PUNCH:    strEvtType = "폭력(PUNCH)";			break;
+	case EVENT_VIOLENCE_KICK:     strEvtType = "폭력(KICK)";				break;
 	}
 		
 	if (copyImg.size().width == 0 || copyImg.size().height == 0) {
@@ -500,7 +501,7 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 			if (objects.size() > 0) {
 				m_pYoloV8->drawObjectLabels(img, objects);
 			}
-		
+
 			/* 1 - 왼쪽 허벅지 2- 왼다리 3 - 오른쪽 허벅지 4- 오른쪽 다리
 			*  5 - 왼쪽몸통 6-오른쪽 몸통(어깨에서 골반)
 			*  8 - 왼쪽 팔뚝   9 -오른쪽 팔뚝  10- 왼쪽 팔  11 - 오른쪽 팔
@@ -512,8 +513,96 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 				m_pYoloPose->drawObjectLabels(img, objectsPose);
 			}
 
-			//cv::imshow("Object Detection", img);
-			//cv::waitKey(30);
+			// SendLog(TRACE_INFO, "POSE SIZE = %d", objectsPose.size());
+
+			CRect rtViolence;
+			int index = -1;
+
+			bool bPunch = false;
+			bool bKick = false;
+			// violence check - PUNCH
+			for (int i = 0; i < objectsPose.size(); ++i) {
+				if (   ( objectsPose[i].LPunchAngle > 140 && objectsPose[i].LArmLineAngle > 220) 
+					|| (objectsPose[i].RPunchAngle > 140 && objectsPose[i].RArmLineAngle > 220)) {
+
+					if (objectsPose[i].rect.height < 200) continue;
+
+					SendLog(TRACE_ERROR, "EVENT_VIOLENCE [PUNCH] WARNING  ");
+
+					rtViolence.left = objectsPose[i].rect.x;
+					rtViolence.top = objectsPose[i].rect.y;
+					rtViolence.right = rtViolence.left + objectsPose[i].rect.width;
+					rtViolence.bottom = rtViolence.top + objectsPose[i].rect.height;
+
+					index = i;
+					bPunch = true;
+					break;
+				}
+			}
+
+			if (bPunch == false) {
+
+				// violence check - KICK
+				for (int i = 0; i < objectsPose.size(); ++i) {
+					if ((objectsPose[i].LkickDeg > 150 && (objectsPose[i].LLegLineAngle < 210) && (objectsPose[i].LLegLineAngle > 0))
+						|| (objectsPose[i].RkickDeg > 150 && objectsPose[i].RLegLineAngle < 210) && (objectsPose[i].RLegLineAngle > 0)) {
+
+						if (objectsPose[i].rect.height < 200) continue;
+
+						SendLog(TRACE_ERROR, "EVENT_VIOLENCE [ KICK ] WARNING  ");
+
+						rtViolence.left = objectsPose[i].rect.x;
+						rtViolence.top = objectsPose[i].rect.y;
+						rtViolence.right = rtViolence.left + objectsPose[i].rect.width;
+						rtViolence.bottom = rtViolence.top + objectsPose[i].rect.height;
+
+						index = i;
+						bKick = true;
+						break;
+					}
+				}
+			}
+			
+
+
+			// 중첩된 Rect 체크
+			if (index != -1) {
+
+				for (int i = 0; i < objectsPose.size(); ++i) {
+					if (i == index) continue;
+
+					CRect personRect;
+					personRect.left = objectsPose[i].rect.x;
+					personRect.top = objectsPose[i].rect.y;
+					personRect.right = personRect.left + objectsPose[i].rect.width;
+					personRect.bottom = personRect.top + objectsPose[i].rect.height;
+
+					RECT rtResult;
+					if (TRUE == IntersectRect(&rtResult, &rtViolence, &personRect)) {
+						
+						if (rtResult.right - rtResult.left > 20) {
+
+							SendLog(TRACE_ERROR, "EVENT_VIOLENCE");
+
+							cv::Scalar red(0, 0, 255);
+							cv::rectangle(img, cv::Rect(rtViolence.left, rtViolence.top, rtViolence.Width(), rtViolence.Height()), red, 10);
+
+							if (bPunch == true) {
+								::SendMessage(this->m_hWnd, WM_USER + 101, (WPARAM)&img, (LPARAM)EVENT_VIOLENCE_PUNCH);
+							}
+							else {
+								::SendMessage(this->m_hWnd, WM_USER + 101, (WPARAM)&img, (LPARAM)EVENT_VIOLENCE_KICK);
+							}
+							
+
+							break;
+						}
+
+					}
+					
+				}
+			}
+
 
 			m_nWidth = img.size().width;
 			m_nHeight = img.size().height;
@@ -554,6 +643,10 @@ void CFrameGeneratorDlg::OnClose()
 
 void CFrameGeneratorDlg::OnBnClickedCancel()
 {
+
+	m_pCompBuffQueue->clear();
+	m_evtList.DeleteAllItems();
+	
 	m_bStopPlay = TRUE;
 
 	m_lFrameCnt = 0;
@@ -566,6 +659,9 @@ void CFrameGeneratorDlg::OnBnClickedCancel()
 
 void CFrameGeneratorDlg::OnBnClickedBtnStop()
 {
+	m_pCompBuffQueue->clear();
+	m_evtList.DeleteAllItems();
+
 	m_bStopPlay = TRUE;
 
 	m_lFrameCnt = 0;

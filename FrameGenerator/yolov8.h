@@ -10,6 +10,12 @@ inline bool doesFileExist (const std::string& name) {
     return f.good();
 }
 
+
+struct poly {
+    float x, y;
+
+};
+
 struct Object {
     // The object class.
     int label{};
@@ -21,6 +27,37 @@ struct Object {
     cv::Mat boxMask;
     // Pose estimation key points
     std::vector<float> kps{};
+
+
+    // 폭력 감지를 위한 관절 각
+    float LkickDeg;
+    float RkickDeg;
+
+    float LArmLineAngle; //< L 손목-팔목 라인 각도
+    float RArmLineAngle; //< R 손목-팔목 라인 각도
+
+    float LLegLineAngle; //< L 정강이 라인 각도
+    float RLegLineAngle; //< R 정강이 라인 각도
+
+    float LPunchAngle;
+    float RPunchAngle;
+
+
+    poly LPunchX1;
+    poly LPunchX2;
+    poly LPunchX3;
+
+    poly RPunchX1;
+    poly RPunchX2;
+    poly RPunchX3;
+
+    poly LKickX1;
+    poly LKickX2;
+    poly LKickX3;
+
+    poly RKickX1;
+    poly RKickX2;
+    poly RKickX3;
 };
 
 
@@ -28,7 +65,8 @@ enum EVENT_TYPE {
     EVENT_NONE = 0,
     EVENT_KNIFE = 100,
     EVENT_COLLAPSE = 101,
-    EVENT_VIOLENCE = 102,
+    EVENT_VIOLENCE_PUNCH = 102,
+    EVENT_VIOLENCE_KICK = 103,
 };
 
 
@@ -50,11 +88,12 @@ struct YoloV8Config {
     int segH = 160;
     int segW = 160;
     float segmentationThreshold = 0.5f;
+    float wheelchairThreshold = 0.9f;
     // Pose estimation options
     int numKPS = 17;
     float kpsThreshold = 0.5f;
-    // Class thresholds (default are COCO classes)
- /*   std::vector<std::string> classNames = {
+    // Class thresholds (default are COCO classes) + wheelchair
+  /*  std::vector<std::string> classNames = {
        "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
        "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
        "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
@@ -63,7 +102,7 @@ struct YoloV8Config {
        "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
        "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
        "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
-       "hair drier", "toothbrush"
+       "hair drier", "toothbrush", "wheelchair"
     };*/
 
     std::vector<std::string> classNames = {
@@ -75,9 +114,10 @@ struct YoloV8Config {
         "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
         "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
         "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
-        "hair drier", "toothbrush"
+        "hair drier", "toothbrush",
 
     };
+
 };
 
 class YoloV8 {
@@ -105,6 +145,51 @@ private:
     std::vector<Object> postProcessSegmentation(std::vector<std::vector<float>>& featureVectors);
 
     std::unique_ptr<Engine> m_trtEngine = nullptr;
+
+
+#ifndef M_PI
+#define M_PI           3.14159265358979323846  /* pi */
+#endif
+
+    float get_deg(float x1, float y1, float x2, float y2) {
+        if (x1 == 0 || x2 == 0)
+            return 0.0;
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double rad = atan2(dy, dx);
+        double degree = (rad * 180) / M_PI;
+        if (degree < 0)
+            degree += 360;
+        return degree;
+    }
+
+
+
+    double get_angle(poly& a, poly& b, poly& c) {
+        double aa, bb, cc;
+        double ang, temp;
+
+        aa = sqrt(pow(a.x - c.x, 2) + pow(a.y - c.y, 2));
+        bb = sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
+        cc = sqrt(pow(b.x - c.x, 2) + pow(b.y - c.y, 2));
+
+        temp = (pow(bb, 2) + pow(cc, 2) - pow(aa, 2)) / (2 * bb * cc);
+        ang = acos(temp);
+        ang = ang * (180 / M_PI);
+
+        return ang;
+    }
+
+
+
+    float get_dist(float x1, float y1, float x2, float y2) {
+        if (x1 == 0 || x2 == 0)
+            return 0.0;
+        else {
+            return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+        }
+    }
+
 
     // Used for image preprocessing
     // YoloV8 model expects values between [0.f, 1.f] so we use the following params
@@ -219,7 +304,8 @@ private:
             {0.857, 0.857, 0.857},
             {0.741, 0.447, 0.000},
             {0.741, 0.717, 0.314},
-            {0.000, 0.500, 0.500}
+            {0.000, 0.500, 0.500},
+       //<     {1.000, 0.667, 1.000},
     };
 
     const std::vector<std::vector<unsigned int>> KPS_COLORS = {
