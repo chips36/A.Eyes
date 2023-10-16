@@ -78,7 +78,7 @@ struct YoloV8Config {
     // Calibration data directory. Must be specified when using INT8 precision.
     std::string calibrationDataDirectory;
     // Probability threshold used to filter detected objects
-    float probabilityThreshold = 0.55f;
+    float probabilityThreshold = 0.70f;
     // Non-maximum suppression threshold
     float nmsThreshold = 0.45f;
     // Max number of detected objects to return
@@ -88,12 +88,13 @@ struct YoloV8Config {
     int segH = 160;
     int segW = 160;
     float segmentationThreshold = 0.5f;
-    float wheelchairThreshold = 0.9f;
+    float wheelchairThreshold = 0.70f;
     // Pose estimation options
     int numKPS = 17;
     float kpsThreshold = 0.5f;
+    
     // Class thresholds (default are COCO classes) + wheelchair
-  /*  std::vector<std::string> classNames = {
+    std::vector<std::string> classNames = {
        "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
        "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
        "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
@@ -102,20 +103,7 @@ struct YoloV8Config {
        "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
        "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
        "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
-       "hair drier", "toothbrush", "wheelchair"
-    };*/
-
-    std::vector<std::string> classNames = {
-        "person", "wheelChair", "car", "wheelChair", "airplane", "bus", "train", "truck", "boat", "traffic light",
-        "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
-        "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-        "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
-        "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-        "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-        "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
-        "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
-        "hair drier", "toothbrush",
-
+       "hair drier", "toothbrush" , "wheelchair"
     };
 
 };
@@ -305,7 +293,7 @@ private:
             {0.741, 0.447, 0.000},
             {0.741, 0.717, 0.314},
             {0.000, 0.500, 0.500},
-       //<     {1.000, 0.667, 1.000},
+            {1.000, 0.667, 1.000},  //< Wheelchair
     };
 
     const std::vector<std::vector<unsigned int>> KPS_COLORS = {

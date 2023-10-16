@@ -71,7 +71,7 @@ void Mat2CImage(cv::Mat* mat, CImage& img) {
 	int imgPitch = img.GetPitch();
 	for (int y = 0; y < mat->rows; y++)
 	{
-		memcpy(pdst, psrc, mat->cols * mat->channels());//mat->step is incorrect for those images created by roi (sub-images!)
+		memcpy(pdst, psrc, mat->cols * mat->channels());
 		psrc += mat->step;
 		pdst += imgPitch;
 	}
@@ -204,9 +204,7 @@ void CFrameGeneratorDlg::InitTensorRT() {
 
 	CString YoloPath, PosePath;
 
-	YoloPath = folderPath + "yolov8x.onnx";
-	//YoloPath = folderPath + "yolov8x-seg.onnx";
-	//YoloPath = folderPath + "wheelchair_best.onnx";
+	YoloPath = folderPath + "ep2_wheelchair_best.onnx";
 	PosePath = folderPath + "yolov8x-pose.onnx";
 
 	SendLog(1, YoloPath);
@@ -226,7 +224,7 @@ void CFrameGeneratorDlg::MakeControlPos() {
 	PreSubclassWindow();
 	if (!m_PreviewWnd.SubclassDlgItem(IDC_STATIC_VIEW, this))
 		ASSERT(FALSE);
-	m_PreviewWnd.SetOSDText("");
+	m_PreviewWnd.SetText("");
 	m_editPath.SetWindowText("rtsp://desktop-uv7j38l.iptime.org/test1234.mp4");
 	m_editPort.SetWindowText("554");
 	m_editID.SetWindowText("admin");
@@ -478,12 +476,6 @@ int CFrameGeneratorDlg::YoloProcessingProc() {
 	{
 		CImageItem* pBuffItem = m_pCompBuffQueue->Pop();
 
-		/*if (m_lFrameCnt % 2 != 0) {
-			
-			SAFE_DELETE(pBuffItem);
-			continue;
-		}*/
-
 		if (pBuffItem)
 		{
 			//////////////////////////////////// OBJECT DETECTION //////////////////////////////////////////////////
@@ -643,7 +635,6 @@ void CFrameGeneratorDlg::OnClose()
 
 void CFrameGeneratorDlg::OnBnClickedCancel()
 {
-
 	m_pCompBuffQueue->clear();
 	m_evtList.DeleteAllItems();
 	

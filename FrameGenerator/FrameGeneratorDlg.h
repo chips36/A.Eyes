@@ -54,7 +54,6 @@ public:
 	DECLARE_MESSAGE_MAP()
 public:
 	
-	afx_msg void OnClose();
 	void InitTensorRT();
 	void ChangeWindowSize(int nWidth, int nHeight);
 
@@ -80,15 +79,18 @@ public:
 	EVENT_TYPE m_nLastEvtType;					//< 마지막 event 발생타입
 	CString	m_ImgSavePath;
 
-	afx_msg void OnBnClickedCancel();
-	afx_msg void OnBnClickedBtnStop();
-	afx_msg void OnBnClickedStart();
-
 	static UINT DecodingThread(LPVOID pVoid);
 	static UINT YoloProcessingThread(LPVOID pVoid);
 	int DecodingProc();
 	int YoloProcessingProc();
 	void MakeControlPos();
 	void InitImageSavePath();
+
+	//< Event Handler 
+
+	afx_msg void OnClose();
+	afx_msg void OnBnClickedCancel();
+	afx_msg void OnBnClickedBtnStop();
+	afx_msg void OnBnClickedStart();
 	afx_msg void OnNMDblclkListEvent(NMHDR* pNMHDR, LRESULT* pResult);
 };

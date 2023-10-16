@@ -3,14 +3,12 @@
 
 YoloV8::YoloV8(const std::string& onnxModelPath, const YoloV8Config& config, HWND hParent)
 	: PROBABILITY_THRESHOLD(config.probabilityThreshold)
-	//< TEST  : PROBABILITY_THRESHOLD(config.wheelchairThreshold)
 	, NMS_THRESHOLD(config.nmsThreshold)
 	, TOP_K(config.topK)
 	, SEG_CHANNELS(config.segChannels)
 	, SEG_H(config.segH)
 	, SEG_W(config.segW)
 	, SEGMENTATION_THRESHOLD(config.segmentationThreshold)
-	//< TEST    , CLASS_NAMES(config.WheelChairclassNames)
 	, CLASS_NAMES(config.classNames)
 	, NUM_KPS(config.numKPS)
 	, KPS_THRESHOLD(config.kpsThreshold) {
@@ -478,13 +476,9 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object>& objects, unsi
 	// Bounding boxes and annotations
 	for (auto& object : objects) {
 
-		//if (object.label != 0)
-		//SendLog(TRACE_INFO, "%d %s", object.label, CLASS_NAMES[object.label].c_str());
-
-		
-
-		//< TEST
-		if (object.label == 0 || object.label == 1 || object.label == 2 || object.label == 3 || object.label == 43)
+		/*if (object.label != 0)
+			SendLog(TRACE_INFO, "%d %s", object.label, CLASS_NAMES[object.label].c_str());*/
+				
 		{
 			// Choose the color
 			int colorIndex = object.label % COLOR_LIST.size(); // We have only defined 80 unique colors
@@ -521,14 +515,19 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object>& objects, unsi
 
 			// object detection 
 			if (object.kps.empty()) {
-				cv::rectangle(image, rect, color * 255, scale + 1);
 
-				cv::rectangle(image, cv::Rect(cv::Point(x, y), cv::Size(labelSize.width, labelSize.height + baseLine)),
-					txt_bk_color, -1);
+				if (object.label != 0) {
+					cv::rectangle(image, rect, color * 255, scale + 1);
+					cv::rectangle(image, cv::Rect(cv::Point(x, y), cv::Size(labelSize.width, labelSize.height + baseLine)),
+						txt_bk_color, -1);
 
-				cv::putText(image, text, cv::Point(x, y + labelSize.height), cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, txtColor, scale);
+					cv::putText(image, text, cv::Point(x, y + labelSize.height), cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, txtColor, scale);
+				}			
 
+				//< TEST 
 				if (object.label == 43) {
+				
+
 
 					SendLog(TRACE_ERROR, "knife Event!");
 					cv::Scalar red(0, 0, 255);
@@ -544,6 +543,14 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object>& objects, unsi
 
 			// Pose estimation
 			if (!object.kps.empty()) {
+
+				cv::rectangle(image, rect, color * 255, scale + 1);
+				cv::rectangle(image, cv::Rect(cv::Point(x, y), cv::Size(labelSize.width, labelSize.height + baseLine)),
+					txt_bk_color, -1);
+
+				cv::putText(image, text, cv::Point(x, y + labelSize.height), cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, txtColor, scale);
+
+
 				auto& kps = object.kps;
 				for (int k = 0; k < NUM_KPS + 2; k++) {
 					if (k < NUM_KPS) {
@@ -572,8 +579,6 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object>& objects, unsi
 
 						cv::line(image, { pos1X, pos1Y }, { pos2X, pos2Y }, limbColor, 2);
 					}
-
-					//< TEST 
 
 					if (pos1S > KPS_THRESHOLD && pos2S > KPS_THRESHOLD) {
 						cv::Scalar limbColor = cv::Scalar(LIMB_COLORS[k][0], LIMB_COLORS[k][1], LIMB_COLORS[k][2]);
@@ -738,15 +743,6 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object>& objects, unsi
 							}
 						}
 					}
-
-
-
-					/* 1 - ¿ÞÂÊ Çã¹÷Áö 2- ¿Þ´Ù¸® 3 - ¿À¸¥ÂÊ Çã¹÷Áö 4- ¿À¸¥ÂÊ ´Ù¸®
-					*  5 - ¿ÞÂÊ¸öÅë 6-¿À¸¥ÂÊ ¸öÅë(¾î±ú¿¡¼­ °ñ¹Ý)
-					*  8 - ¿ÞÂÊ ÆÈ¶Ò   9 -¿À¸¥ÂÊ ÆÈ¶Ò  10- ¿ÞÂÊ ÆÈ  11 - ¿À¸¥ÂÊ ÆÈ
-					   12 - ¹Ì°£ 13 - ¿ÞÂÊ ´«¿¡¼­ ±Í 14 -¿ÞÂÊ´«¿¡¼­ ÄÚ 15-  ¿À¸¥ÂÊ´«¿¡¼­ ÄÚ
-					   17,18 - ±Í¿¡¼­ ¾î±ú
-					*/
 				}
 			}
 
@@ -771,7 +767,6 @@ void YoloV8::drawObjectLabels(cv::Mat& image, std::vector<Object>& objects, unsi
 					m_nCollapseCnt = 0;
 					m_nNormalCnt = 0;
 				}
-					
 			}
 		} // if 
 	}

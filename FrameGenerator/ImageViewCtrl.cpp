@@ -40,7 +40,6 @@ static char THIS_FILE[] = __FILE__;
 #define COLOR_DK2ORANGE     RGB(160, 80, 40)
 
 
-
 BOOL CImageViewCtrl::CreateFont(LPCSTR szFontName, int nHeight, BOOL bBold, CFont& fontOut)
 {
 	CFont font;
@@ -85,8 +84,8 @@ IMPLEMENT_DYNAMIC(CImageViewCtrl, CStatic)
 
 CImageViewCtrl::CImageViewCtrl() : CStatic()
 {
-	m_bDrawCircleRect = FALSE;
-	m_nBitmapWidth = m_nBitmapHeight = 0;
+	m_nBitmapWidth = 0;
+	m_nBitmapHeight = 0;
 }
 
 CImageViewCtrl::~CImageViewCtrl()
@@ -101,8 +100,9 @@ END_MESSAGE_MAP()
 void CImageViewCtrl::ClearStatic()
 {
 	m_Bitmap.DeleteObject();
-	m_nBitmapWidth = m_nBitmapHeight = 0;
-	m_strOSDText = "";
+	m_nBitmapWidth = 0;
+	m_nBitmapHeight = 0;
+	m_strText = "";
 	RedrawWindow();
 }
 
@@ -152,9 +152,9 @@ void CImageViewCtrl::DisplayImage(cv::Mat s_image, BOOL bDrawNow)
 		DrawImg(&dc);
 }
 
-void CImageViewCtrl::SetOSDText(LPCSTR szText)
+void CImageViewCtrl::SetText(LPCSTR szText)
 {
-	m_strOSDText = szText;
+	m_strText = szText;
 }
 
 BOOL CImageViewCtrl::OnEraseBkgnd(CDC* pDC)
@@ -179,15 +179,15 @@ void CImageViewCtrl::DrawImg(CDC* pDC)
 		d_dc.FillSolidRect(rect, RGB(64, 64, 64));
 		d_dc.BitBlt(d_rect.left, d_rect.top, m_nBitmapWidth, m_nBitmapHeight, &s_dc, 0, 0, SRCCOPY);
 		s_dc.SelectObject(s_bitmap_old);
-		DrawOSDText(&d_dc);
-		if (m_bDrawCircleRect)
-			DrawCircleRect(&d_dc);
+
+		DrawViewText(&d_dc);
+
 		pDC->BitBlt(0, 0, rect.Width(), rect.Height(), &d_dc, 0, 0, SRCCOPY);
 		d_dc.SelectObject(d_bitmap_old);
 	}
 	else {
 		pDC->FillSolidRect(rect, RGB(0, 0, 0));
-		DrawOSDText(pDC);
+		DrawViewText(pDC);
 	}
 }
 
@@ -200,9 +200,9 @@ void CImageViewCtrl::DrawRectangle(CDC* pDC, int x, int y, int width, int height
 	pDC->SelectStockObject(NULL_PEN);
 }
 
-void CImageViewCtrl::DrawOSDText(CDC* pDC)
+void CImageViewCtrl::DrawViewText(CDC* pDC)
 {
-	if (m_strOSDText.IsEmpty()) return;
+	if (m_strText.IsEmpty()) return;
 
 	CRect rect;
 	GetClientRect(&rect);
@@ -212,28 +212,6 @@ void CImageViewCtrl::DrawOSDText(CDC* pDC)
 	old_font = pDC->SelectObject(&font);
 	pDC->SetTextColor(RGB(255, 255, 255));
 	pDC->SetBkMode(TRANSPARENT);
-	pDC->DrawText(m_strOSDText, rect, DT_RIGHT | DT_TOP | DT_SINGLELINE);
+	pDC->DrawText(m_strText, rect, DT_RIGHT | DT_TOP | DT_SINGLELINE);
 	pDC->SelectObject(old_font);
-}
-
-void CImageViewCtrl::DrawCircleRect(CDC* pDC)
-{
-	CPen pen(PS_SOLID, 1, COLOR_WHITE);
-	pDC->SelectObject(&pen);
-	pDC->SelectStockObject(NULL_BRUSH);
-	pDC->Ellipse(m_rectCircle);
-	pDC->Rectangle(m_rectCircle);
-
-	for (int i = 0; i < 8; i++) {
-		pDC->Rectangle(m_rectMarker[i]);
-	}
-
-	int centerX = m_rectCircle.left + (int)((m_rectCircle.right - m_rectCircle.left) / 2);
-	int centerY = m_rectCircle.top + (int)((m_rectCircle.bottom - m_rectCircle.top) / 2);
-	pDC->MoveTo(centerX, centerY - 10);
-	pDC->LineTo(centerX, centerY + 11);
-	pDC->MoveTo(centerX - 10, centerY);
-	pDC->LineTo(centerX + 11, centerY);
-
-	pDC->SelectStockObject(NULL_PEN);
 }

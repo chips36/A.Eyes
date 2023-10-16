@@ -572,7 +572,7 @@ Int8EntropyCalibrator2::Int8EntropyCalibrator2(int32_t batchSize, int32_t inputW
         throw std::runtime_error("There are fewer calibration images than the specified batch size!");
     }
 
-    // Randomize the calibration data //< TEST
+    // Randomize the calibration data
     /*auto rd = std::random_device {};
     auto rng = std::default_random_engine { rd() };
     std::shuffle(std::begin(m_imgPaths), std::end(m_imgPaths), rng);*/
