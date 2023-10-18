@@ -101,7 +101,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>opencv_world480d.lib;nvinfer.lib;nvinfer_plugin.lib;nvonnxparser.lib;nvparsers.lib;cudart.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\_LIB\pthreads\lib\x64;..\_LIB\CUDA\lib\x64;..\_LIB\OpenCV\lib\x64\vc17\lib;..\_LIB\TensorRT\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\_LIB\CUDA\lib\x64;..\_LIB\OpenCV\lib\x64\vc17\lib;..\_LIB\TensorRT\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -179,7 +179,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\_LIB\live555\lib\VC2015\x64;..\_LIB\libjpeg\lib\VC2015\x64;..\_LIB\FFMPEG\lib\x64;..\_LIB\libwebsockets\lib\VC2015\x64;..\_LIB\LwsWebServerDll;..\_LIB\pthreads\lib\x64;..\_LIB\xmljson\lib\VC2015\x64;..\_LIB\CPPRestSDK\lib\x64;..\_LIB\OpenSSL\lib\x64\VC;..\_LIB\CUDA\lib\x64;..\_LIB\Seeta\lib;..\_LIB\OpenCV\lib\x64\vc17\lib;..\_LIB\TensorRT\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\_LIB\CUDA\lib\x64;..\_LIB\OpenCV\lib\x64\vc17\lib;..\_LIB\TensorRT\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world480.lib;nvinfer.lib;nvinfer_plugin.lib;nvonnxparser.lib;nvparsers.lib;cudart.lib</AdditionalDependencies>
     </Link>
     <Midl>
