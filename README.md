@@ -20,3 +20,6 @@
  - H/W Spec :  Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz   2.90 GHz / 32.0GB RAM / NVIDIA GeForce GTX 1660 Ti
 - 개발언어 : C++  
 - 개발 IDE : Visual Studio 2022
+------------------------------------------------- 
+# License
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
