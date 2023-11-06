@@ -9,7 +9,8 @@
 # 시연영상
 ![image](https://github.com/chips36/A.Eyes/assets/25604788/9a37cb35-c865-4b5e-9e48-6dbb5e837ac8)
 
-- https://www.youtube.com/watch?v=fbj7knwy1EE
+
+- https://youtu.be/9rDHSFQrnsM
 ------------------------------------------------- 
 # 아키텍처
 ![image](https://github.com/chips36/A.Eyes/assets/25604788/ea8af7bd-d3c8-4043-a538-8c8535ab6df8)
