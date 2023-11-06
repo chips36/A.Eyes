@@ -27,5 +27,5 @@
 A.Eyes has an Apache license, as found in the [LICENSE] file.
 
 
-[LICENSE]: https://github.com/chips36/Eyes/blob/master/LICENSE
+[LICENSE]: https://github.com/chips36/Eyes/blob/main/LICENSE
 
