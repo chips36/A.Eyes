@@ -25,3 +25,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A.Eyes has an Apache license, as found in the [LICENSE] file.
+
+
+[LICENSE]: https://github.com/chips36/Eyes/blob/master/LICENSE
+
